@@ -1,0 +1,66 @@
+Design a SQL database schema based on the data output from part 1. Write a SQL query that retrieves the following:
+1. HGNC ID and disease connection
+
+Query :
+
+SELECT 
+    h.gene_name,
+    d.disease_name
+FROM Hgnc_genes h
+JOIN OSL_diseases d
+    ON h.omim_id = d.omim_id
+JOIN ensembl_genes_19 e
+    ON h.ensembl_id = e.ensembl_id;
+    
+    
+Output :
+
++-----------+----------------------------------------------+
+| gene_name | disease_name                                 |
++-----------+----------------------------------------------+
+| APOL1     | apolipoprotein L1                            |
+| APOL1     | Wolff-Parkinson-White syndrome               |
+| APOL1     | hypogonadism, male                           |
+| APOL1     | gyrate atrophy                               |
+| APOL1     | growth hormone secreting pituitary adenoma 1 |
++-----------+----------------------------------------------+
+5 rows in set (0.003 sec)
+
+
+2. HGNC Gene Name and any gene name aliases parsed
+
+SELECT
+    h.gene_name,
+    TRIM(alias.value) AS alias
+FROM Hgnc_genes h,
+JSON_TABLE(
+    CONCAT(
+        '["',
+        REPLACE(TRIM(BOTH '[]' FROM h.gene_aliases), ', ', '","'),
+        '"]'
+    ),
+    "$[*]" COLUMNS (
+        value VARCHAR(100) PATH "$"
+    )
+) AS alias
+ORDER BY h.gene_name, alias.value;
+
++-----------+---------------+
+| gene_name | alias         |
++-----------+---------------+
+| APOL1     |               |
+| COL4A3    |               |
+| COL4A4    | [CA44]        |
+| HERC2     | [jdf2         |
+| HERC2     | D15F37S1]     |
+| HERC2     | p528          |
+| HNF1A     | [HNF1         |
+| HNF1A     | HNF1α]        |
+| HNF1A     | LFB1          |
+| MGP       |               |
+| NPHS2     | [SRN1         |
+| NPHS2     | PDCN]         |
+| RRAGD     | [DKFZP761H171 |
+| RRAGD     | bA11D8.2.1]   |
++-----------+---------------+
+14 rows in set (0.006 sec)
