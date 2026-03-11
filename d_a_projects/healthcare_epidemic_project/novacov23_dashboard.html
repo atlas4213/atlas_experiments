@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NovaCov-23 Outbreak Analysis — 2023</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Serif:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:       #0a0c0f;
+  --surface:  #111318;
+  --surface2: #191c23;
+  --border:   #252830;
+  --red:      #ef4444;
+  --amber:    #f59e0b;
+  --blue:     #3b82f6;
+  --green:    #22c55e;
+  --purple:   #a855f7;
+  --text:     #e2e8f0;
+  --muted:    #64748b;
+  --dim:      #334155;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-weight: 300;
+  line-height: 1.6;
+}
+
+/* ── HEADER ── */
+header {
+  padding: 32px 48px 28px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+
+header::before {
+  content:'';
+  position:absolute;
+  top:-80px; left:-80px;
+  width:500px; height:300px;
+  background: radial-gradient(ellipse, rgba(239,68,68,0.06) 0%, transparent 70%);
+  pointer-events:none;
+}
+
+.header-eyebrow {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--red);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pulse {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--red);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50%      { opacity:0.4; transform:scale(1.4); }
+}
+
+h1 {
+  font-family: 'IBM Plex Serif', serif;
+  font-size: clamp(1.8rem, 3.5vw, 3rem);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-bottom: 12px;
+}
+
+h1 span { color: var(--red); }
+
+.header-meta {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.72rem;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.header-stats {
+  display: flex;
+  gap: 16px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+.hstat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 20px;
+  min-width: 140px;
+}
+
+.hstat-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.62rem;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.hstat-value {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.hstat-value.red    { color: var(--red); }
+.hstat-value.amber  { color: var(--amber); }
+.hstat-value.blue   { color: var(--blue); }
+.hstat-value.green  { color: var(--green); }
+
+/* ── NAV ── */
+nav {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 48px;
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+nav button {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 14px 20px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+nav button:hover  { color: var(--text); }
+nav button.active { color: var(--red); border-bottom-color: var(--red); }
+
+/* ── MAIN ── */
+main { padding: 40px 48px; max-width: 1400px; margin: 0 auto; }
+
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+
+/* ── SECTION TITLE ── */
+.section-title {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--muted);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-title::before {
+  content:'';
+  width:3px; height:16px;
+  background: var(--red);
+  border-radius: 2px;
+}
+
+/* ── KPI GRID ── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.kpi {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.kpi:hover { border-color: var(--dim); }
+
+.kpi::after {
+  content:'';
+  position:absolute;
+  bottom:0; left:0; right:0;
+  height:2px;
+}
+.kpi.r::after { background: var(--red); }
+.kpi.a::after { background: var(--amber); }
+.kpi.b::after { background: var(--blue); }
+.kpi.g::after { background: var(--green); }
+.kpi.p::after { background: var(--purple); }
+
+.kpi-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.62rem;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.kpi-val {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 1.8rem;
+  font-weight: 600;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.kpi-sub {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--muted);
+}
+
+/* ── GRIDS ── */
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+.grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:16px; }
+.span-2 { grid-column: span 2; }
+
+/* ── CARD ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 16px;
+}
+
+.card-title {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.72rem;
+  color: var(--text);
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.card-sub {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.62rem;
+  color: var(--muted);
+  margin-bottom: 20px;
+  letter-spacing: 0.04em;
+}
+
+canvas { max-width:100%; }
+
+/* ── TABLE ── */
+table { width:100%; border-collapse:collapse; font-size:0.83rem; }
+
+thead tr { border-bottom: 1px solid var(--border); }
+
+th {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.62rem;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+  padding: 0 12px 12px 0;
+  font-weight: 400;
+}
+
+td {
+  padding: 11px 12px 11px 0;
+  border-bottom: 1px solid rgba(37,40,48,0.7);
+  font-weight: 300;
+}
+
+tr:last-child td { border-bottom:none; }
+tr:hover td { background: rgba(255,255,255,0.02); }
+
+.pill {
+  display:inline-block;
+  padding:2px 8px;
+  border-radius:4px;
+  font-family:'IBM Plex Mono',monospace;
+  font-size:0.62rem;
+  letter-spacing:0.04em;
+}
+.pill-r { background:rgba(239,68,68,0.12); color:var(--red); }
+.pill-a { background:rgba(245,158,11,0.12); color:var(--amber); }
+.pill-g { background:rgba(34,197,94,0.12); color:var(--green); }
+.pill-b { background:rgba(59,130,246,0.12); color:var(--blue); }
+
+/* ── WRITEUP ── */
+.writeup {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 40px 48px;
+}
+
+.writeup h2 {
+  font-family: 'IBM Plex Serif', serif;
+  font-weight: 600;
+  font-size: 1.4rem;
+  letter-spacing: -0.01em;
+  margin-bottom: 6px;
+}
+
+.analyst-meta {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ws { margin-bottom:28px; }
+
+.ws h3 {
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 500;
+  font-size: 0.75rem;
+  color: var(--red);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.ws h3::before {
+  content:'';
+  display:inline-block;
+  width:5px; height:5px;
+  border-radius:50%;
+  background:var(--red);
+}
+
+.ws p {
+  color: #94a3b8;
+  font-size: 0.88rem;
+  line-height: 1.8;
+  max-width: 820px;
+}
+
+.ws p strong { color: var(--text); font-weight:500; }
+
+.callout {
+  background: rgba(239,68,68,0.05);
+  border: 1px solid rgba(239,68,68,0.2);
+  border-left: 3px solid var(--red);
+  border-radius: 0 6px 6px 0;
+  padding: 14px 18px;
+  margin-top: 12px;
+  font-size: 0.83rem;
+  color: #fca5a5;
+  max-width: 820px;
+}
+
+.callout.amber {
+  background: rgba(245,158,11,0.05);
+  border-color: rgba(245,158,11,0.2);
+  border-left-color: var(--amber);
+  color: #fcd34d;
+}
+
+.rec-grid {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  margin-top:12px;
+  max-width:820px;
+}
+
+.rec {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px;
+}
+
+.rec-n {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--purple);
+  opacity: 0.5;
+  margin-bottom: 6px;
+}
+
+.rec-t { font-size:0.85rem; color:var(--text); line-height:1.55; }
+.rec-t strong { color:var(--purple); font-weight:500; }
+
+/* ── FOOTER ── */
+footer {
+  border-top:1px solid var(--border);
+  padding:20px 48px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.footer-note {
+  font-family:'IBM Plex Mono',monospace;
+  font-size:0.62rem;
+  color:var(--muted);
+  letter-spacing:0.05em;
+}
+
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(16px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+header, .kpi, .card { animation: fadeUp 0.45s ease both; }
+.kpi:nth-child(1) { animation-delay:.04s; }
+.kpi:nth-child(2) { animation-delay:.08s; }
+.kpi:nth-child(3) { animation-delay:.12s; }
+.kpi:nth-child(4) { animation-delay:.16s; }
+.kpi:nth-child(5) { animation-delay:.20s; }
+
+@media(max-width:900px){
+  header,main,nav,footer { padding-left:20px; padding-right:20px; }
+  .kpi-grid { grid-template-columns:repeat(2,1fr); }
+  .grid-2,.grid-3 { grid-template-columns:1fr; }
+  .span-2 { grid-column:span 1; }
+  .writeup { padding:24px; }
+  .rec-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-eyebrow"><span class="pulse"></span>Outbreak Analysis Report · FY 2023 · Millbrook County Health District</div>
+  <h1>NovaCov-23<br><span>Infectious Disease</span> Surveillance</h1>
+  <div class="header-meta">
+    <span>ANALYST: Junior Analyst</span>
+    <span>PERIOD: Jan 1 – Dec 31, 2023</span>
+    <span>COUNTIES: 7</span>
+    <span>STATUS: MOCK DATA</span>
+  </div>
+  <div class="header-stats">
+    <div class="hstat"><div class="hstat-label">Total Cases</div><div class="hstat-value red">20,138</div></div>
+    <div class="hstat"><div class="hstat-label">Hospitalisations</div><div class="hstat-value amber">3,895</div></div>
+    <div class="hstat"><div class="hstat-label">ICU Admissions</div><div class="hstat-value blue">1,296</div></div>
+    <div class="hstat"><div class="hstat-label">Deaths</div><div class="hstat-value red">388</div></div>
+    <div class="hstat"><div class="hstat-label">Case Fatality Rate</div><div class="hstat-value amber">1.93%</div></div>
+  </div>
+</header>
+
+<nav>
+  <button class="active" onclick="switchTab('overview')">Overview</button>
+  <button onclick="switchTab('geography')">Geography</button>
+  <button onclick="switchTab('demographics')">Demographics</button>
+  <button onclick="switchTab('variants')">Variants</button>
+  <button onclick="switchTab('vaccines')">Vaccine Data</button>
+  <button onclick="switchTab('report')">Report</button>
+</nav>
+
+<main>
+
+<!-- OVERVIEW -->
+<div id="tab-overview" class="tab-panel active">
+  <div class="kpi-grid">
+    <div class="kpi r"><div class="kpi-label">Total Cases</div><div class="kpi-val">20,138</div><div class="kpi-sub">Confirmed FY 2023</div></div>
+    <div class="kpi a"><div class="kpi-label">Hosp Rate</div><div class="kpi-val">19.3%</div><div class="kpi-sub">3,895 admissions</div></div>
+    <div class="kpi b"><div class="kpi-label">ICU Rate</div><div class="kpi-val">6.4%</div><div class="kpi-sub">1,296 admissions</div></div>
+    <div class="kpi r"><div class="kpi-label">CFR</div><div class="kpi-val">1.93%</div><div class="kpi-sub">388 deaths</div></div>
+    <div class="kpi g"><div class="kpi-label">Peak Week</div><div class="kpi-val">Wk 32</div><div class="kpi-sub">819 cases</div></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card span-2">
+      <div class="card-title">Epidemic Curve — Weekly Case Count</div>
+      <div class="card-sub">Jan–Dec 2023 · 3-wave pattern identified</div>
+      <canvas id="epicurveChart" height="120"></canvas>
+    </div>
+  </div>
+
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-title">Outcome Distribution</div>
+      <div class="card-sub">All confirmed cases FY 2023</div>
+      <canvas id="outcomeChart" height="200"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">Monthly Case Volume</div>
+      <div class="card-sub">Wave seasonality visible</div>
+      <canvas id="monthlyChart" height="200"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">Platform Split</div>
+      <div class="card-sub">Urban vs Suburban vs Rural</div>
+      <canvas id="countyTypeChart" height="200"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- GEOGRAPHY -->
+<div id="tab-geography" class="tab-panel">
+  <div class="section-title">Geographic Distribution & County Risk</div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Cases by County</div>
+      <div class="card-sub">Total confirmed cases FY 2023</div>
+      <canvas id="countyBarChart" height="220"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">Hospitalisation Rate by County</div>
+      <div class="card-sub">Rural counties show higher severity</div>
+      <canvas id="countyHospChart" height="220"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">County Summary Table</div>
+    <div class="card-sub">All 7 counties · FY 2023</div>
+    <table>
+      <thead><tr><th>County</th><th>Type</th><th>Population</th><th>Cases</th><th>Hosp Rate</th><th>CFR</th><th>Vacc Rate</th><th>Risk</th></tr></thead>
+      <tbody>
+        <tr><td>Maplewood</td><td>Urban</td><td>420,000</td><td>8,438</td><td>19.2%</td><td>1.88%</td><td>49.5%</td><td><span class="pill pill-a">Medium</span></td></tr>
+        <tr><td>Riverside</td><td>Urban</td><td>310,000</td><td>6,179</td><td>19.1%</td><td>1.80%</td><td>49.1%</td><td><span class="pill pill-a">Medium</span></td></tr>
+        <tr><td>Cresthill</td><td>Suburban</td><td>185,000</td><td>2,501</td><td>19.0%</td><td>1.68%</td><td>51.1%</td><td><span class="pill pill-g">Low</span></td></tr>
+        <tr><td>Fairview</td><td>Suburban</td><td>142,000</td><td>1,946</td><td>19.7%</td><td>2.31%</td><td>50.0%</td><td><span class="pill pill-a">Medium</span></td></tr>
+        <tr><td>Pinegrove</td><td>Rural</td><td>68,000</td><td>517</td><td>21.9%</td><td>3.87%</td><td>49.7%</td><td><span class="pill pill-r">High</span></td></tr>
+        <tr><td>Oakdale</td><td>Rural</td><td>52,000</td><td>345</td><td>21.2%</td><td>1.74%</td><td>51.0%</td><td><span class="pill pill-a">Medium</span></td></tr>
+        <tr><td>Laketon</td><td>Rural</td><td>39,000</td><td>212</td><td>23.6%</td><td>2.36%</td><td>49.1%</td><td><span class="pill pill-r">High</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- DEMOGRAPHICS -->
+<div id="tab-demographics" class="tab-panel">
+  <div class="section-title">Age & Sex Demographic Breakdown</div>
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-title">Cases by Age Group</div>
+      <div class="card-sub">Volume distribution</div>
+      <canvas id="ageCasesChart" height="220"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">Hospitalisation Rate by Age</div>
+      <div class="card-sub">% of cases hospitalised</div>
+      <canvas id="ageHospChart" height="220"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">Case Fatality Rate by Age</div>
+      <div class="card-sub">Deaths per 100 confirmed cases</div>
+      <canvas id="ageCFRChart" height="220"></canvas>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Cases by Sex</div>
+      <div class="card-sub">Male vs Female distribution</div>
+      <canvas id="sexChart" height="200"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">Avg Hospital Length of Stay by Age</div>
+      <div class="card-sub">Days (hospitalised cases only)</div>
+      <canvas id="losChart" height="200"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- VARIANTS -->
+<div id="tab-variants" class="tab-panel">
+  <div class="section-title">Variant Progression & Severity</div>
+  <div class="card">
+    <div class="card-title">Variant Dominance Over Time</div>
+    <div class="card-sub">Weekly cases stacked by dominant variant</div>
+    <canvas id="variantAreaChart" height="130"></canvas>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Cases per Variant</div>
+      <div class="card-sub">Total case volume FY 2023</div>
+      <canvas id="variantCasesChart" height="220"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">Severity by Variant</div>
+      <div class="card-sub">Hosp rate and CFR comparison</div>
+      <canvas id="variantSeverityChart" height="220"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- VACCINES -->
+<div id="tab-vaccines" class="tab-panel">
+  <div class="section-title">Vaccine Coverage & Effectiveness</div>
+  <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
+    <div class="kpi b"><div class="kpi-label">Vacc Coverage (Dec)</div><div class="kpi-val">65.8%</div><div class="kpi-sub">vs 15% in January</div></div>
+    <div class="kpi g"><div class="kpi-label">Hosp Rate (Vacc)</div><div class="kpi-val">18.7%</div><div class="kpi-sub">vs 20.0% unvaccinated</div></div>
+    <div class="kpi a"><div class="kpi-label">CFR (Vacc)</div><div class="kpi-val">1.64%</div><div class="kpi-sub">vs 2.21% unvaccinated</div></div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Vaccination Coverage Growth</div>
+      <div class="card-sub">Monthly % of cases that were vaccinated</div>
+      <canvas id="vaccCoverageChart" height="220"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">Outcomes — Vaccinated vs Unvaccinated</div>
+      <div class="card-sub">Hosp rate, ICU rate, CFR</div>
+      <canvas id="vaccEffectChart" height="220"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- REPORT -->
+<div id="tab-report" class="tab-panel">
+  <div class="writeup">
+    <h2>Analysis Report — NovaCov-23 Outbreak</h2>
+    <div class="analyst-meta">PREPARED BY: JUNIOR ANALYST · MILLBROOK COUNTY HEALTH DISTRICT · JANUARY 2024 · DRAFT v1.2</div>
+
+    <div class="ws">
+      <h3>Overview</h3>
+      <p>This report documents the NovaCov-23 outbreak across the Millbrook County Health District during FY 2023 (January 1 – December 31). Data was extracted from the district's case reporting system and covers <strong>20,138 confirmed cases</strong> across 7 counties following data cleaning and validation. The year was characterised by three distinct epidemic waves, four circulating variants, and an evolving vaccination landscape. The <strong>case fatality rate (CFR) for the full year was 1.93%</strong>, resulting in 388 deaths. Total hospitalisations reached 3,895 (19.3% of cases).</p>
+    </div>
+
+    <div class="ws">
+      <h3>Epidemic Waves</h3>
+      <p>Three epidemic waves were identified using rolling weekly case counts. <strong>Wave 1</strong> peaked around Week 9 (early March) with the Original variant dominant. <strong>Wave 2</strong> was the most severe, peaking at Week 32 (mid-August) with 819 cases in a single week, coinciding with the Delta-X variant surge. <strong>Wave 3</strong> began building in late November and continued through December, driven by Omicron-Z. The lowest case counts were observed in May and October — inter-wave troughs consistent with respiratory illness seasonality.</p>
+      <div class="callout">📊 <strong>Note:</strong> Wave 2 peak (Wk 32) was approximately 4× the Wave 1 peak. Worth flagging to the epidemiology team whether this reflects true transmission differences or reporting delays catching up.</div>
+    </div>
+
+    <div class="ws">
+      <h3>Geographic Risk</h3>
+      <p>Urban counties — Maplewood (8,438 cases) and Riverside (6,179 cases) — accounted for <strong>72.6% of total case volume</strong> by population density. However, rural counties showed consistently higher clinical severity. <strong>Pinegrove had the highest CFR at 3.87%</strong> and Laketon had the highest hospitalisation rate at 23.6%. This rural severity disparity likely reflects a combination of older demographics, longer distances to acute care, and lower baseline health system capacity.</p>
+    </div>
+
+    <div class="ws">
+      <h3>Age Group Vulnerability</h3>
+      <p>The <strong>65+ age group had a 38.5% hospitalisation rate and 5.35% CFR</strong> — both dramatically higher than any other cohort. For comparison, the 0–17 group had a 3.5% hospitalisation rate and 0.11% CFR. The 18–34 and 35–49 groups carried a surprisingly similar burden (~16–17% hosp rate), suggesting working-age adults had meaningful exposure, possibly occupational. Average hospital length of stay for the 65+ group was 3.0 days vs 0.3 days for 0–17.</p>
+      <div class="callout amber">📊 <strong>Observation:</strong> The similarity in hospitalisation rates between 18–34 and 35–49 was unexpected. Worth investigating whether this reflects occupational exposure patterns or comorbidity differences — would need additional data fields to confirm.</div>
+    </div>
+
+    <div class="ws">
+      <h3>Variant Analysis</h3>
+      <p>Four variants circulated during 2023. The Original strain and Delta-X showed similar and higher severity (CFR ~2.6%), while <strong>Omicron-Y and Omicron-Z showed meaningfully lower CFRs of 1.22% and 1.13% respectively</strong> — consistent with globally observed Omicron attenuation. Omicron-Y was the most prevalent variant by case count (7,053 cases, 35% of total). The shift toward milder variants in the second half of the year partially explains why Wave 3 case volumes were rising while CFR was declining.</p>
+    </div>
+
+    <div class="ws">
+      <h3>Vaccine Effectiveness</h3>
+      <p>Vaccination coverage grew from approximately 15% in January to 65.8% by December. Vaccinated individuals showed a <strong>1.3pp lower hospitalisation rate (18.7% vs 20.0%)</strong> and a <strong>0.57pp lower CFR (1.64% vs 2.21%)</strong> compared to unvaccinated cases. While statistically meaningful, the effect size appears modest in aggregate — this is likely because the dataset mixes all age groups together and the protective effect is strongest in the 65+ cohort. A stratified analysis by age group would provide a clearer picture of vaccine effectiveness.</p>
+    </div>
+
+    <div class="ws">
+      <h3>Recommendations</h3>
+      <div class="rec-grid">
+        <div class="rec"><div class="rec-n">01</div><div class="rec-t"><strong>Prioritise rural surge capacity:</strong> Pinegrove and Laketon show disproportionate severity despite low case volumes. Pre-positioning resources before Wave 3 peaks could reduce preventable deaths.</div></div>
+        <div class="rec"><div class="rec-n">02</div><div class="rec-t"><strong>Targeted 65+ vaccination push:</strong> Coverage data suggests the age group with the highest risk may still have room for improved vaccination rates. A stratified effectiveness analysis should inform campaign targeting.</div></div>
+        <div class="rec"><div class="rec-n">03</div><div class="rec-t"><strong>Investigate working-age hospitalisation:</strong> The 18–49 group hospitalisation rate warrants further investigation. Occupational exposure data could identify high-risk worker categories for targeted intervention.</div></div>
+        <div class="rec"><div class="rec-n">04</div><div class="rec-t"><strong>Prepare for Wave 3:</strong> Omicron-Z is driving a December resurgence. While less fatal, high case volumes still stress hospital capacity. Early warning thresholds should be set based on Wave 2 data.</div></div>
+      </div>
+    </div>
+
+    <div class="ws">
+      <h3>Data Limitations</h3>
+      <p>Several caveats apply to this analysis. First, the dataset does not include comorbidity data, which limits our ability to fully explain the rural severity gap or working-age hospitalisation patterns. Second, vaccination status is self-reported in some county systems and may under-count coverage. Third, the 4 dirty rows removed during cleaning (duplicate, impossible date, invalid categoricals) represent a tiny fraction of the dataset and are unlikely to affect conclusions, but are documented in the cleaning script for full transparency. A follow-up analysis including comorbidities and socioeconomic indicators would strengthen the recommendations significantly.</p>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<footer>
+  <span class="footer-note">MILLBROOK COUNTY HEALTH DISTRICT · NOVACOV-23 SURVEILLANCE · FY 2023 · MOCK DATA</span>
+  <span class="footer-note">JUNIOR ANALYST PORTFOLIO PROJECT</span>
+</footer>
+
+<script>
+function switchTab(id) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+Chart.defaults.color = '#64748b';
+Chart.defaults.font.family = "'IBM Plex Mono', monospace";
+Chart.defaults.font.size = 11;
+
+const RED='#ef4444', AMBER='#f59e0b', BLUE='#3b82f6', GREEN='#22c55e', PURPLE='#a855f7', SLATE='#475569';
+const BORDER='#252830';
+
+// Weekly epidemic curve data
+const weeks = Array.from({length:52},(_,i)=>i+1);
+const epicurve = [205,236,322,321,353,445,509,487,572,552,488,431,376,321,287,243,212,187,198,243,321,398,487,543,612,687,734,756,789,812,807,819,798,743,698,623,547,487,412,356,287,212,187,198,234,312,398,487,543,598,632,654];
+
+// Overview charts
+new Chart(document.getElementById('epicurveChart'),{
+  type:'bar',
+  data:{
+    labels: weeks,
+    datasets:[
+      {label:'Weekly Cases', data:epicurve, backgroundColor:'rgba(239,68,68,0.55)', borderRadius:2},
+      {label:'3-wk Avg', data:weeks.map((_,i)=>{
+        const slice=epicurve.slice(Math.max(0,i-1),i+2);
+        return Math.round(slice.reduce((a,b)=>a+b,0)/slice.length);
+      }), type:'line', borderColor:SLATE, borderWidth:2, pointRadius:0, fill:false, tension:0.4}
+    ]
+  },
+  options:{
+    plugins:{legend:{position:'top'}},
+    scales:{
+      x:{grid:{color:BORDER}, ticks:{callback:(_,i)=>i%4===0?`W${i+1}`:''}},
+      y:{grid:{color:BORDER}}
+    }
+  }
+});
+
+new Chart(document.getElementById('outcomeChart'),{
+  type:'doughnut',
+  data:{
+    labels:['Recovered','Hospitalized','ICU','Deceased'],
+    datasets:[{data:[15559,2210,731,388], backgroundColor:[GREEN,AMBER,BLUE,RED], borderColor:'#0a0c0f', borderWidth:3, hoverOffset:5}]
+  },
+  options:{cutout:'66%', plugins:{legend:{position:'bottom', labels:{boxWidth:10,padding:12}}}}
+});
+
+const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const monthlyCases=[1257,1869,2326,1404,707,1532,2856,3170,1817,592,808,1800];
+new Chart(document.getElementById('monthlyChart'),{
+  type:'bar',
+  data:{labels:months, datasets:[{label:'Cases', data:monthlyCases, backgroundColor:monthlyCases.map(v=>v>2500?RED:v>1500?AMBER:BLUE), borderRadius:4}]},
+  options:{plugins:{legend:{display:false}}, scales:{x:{grid:{color:BORDER}},y:{grid:{color:BORDER}}}}
+});
+
+new Chart(document.getElementById('countyTypeChart'),{
+  type:'doughnut',
+  data:{labels:['Urban','Suburban','Rural'], datasets:[{data:[14617,4447,1074], backgroundColor:[RED,AMBER,GREEN], borderColor:'#0a0c0f', borderWidth:3}]},
+  options:{cutout:'60%', plugins:{legend:{position:'bottom', labels:{boxWidth:10,padding:12}}}}
+});
+
+// Geography charts
+const counties=['Maplewood','Riverside','Cresthill','Fairview','Pinegrove','Oakdale','Laketon'];
+new Chart(document.getElementById('countyBarChart'),{
+  type:'bar', indexAxis:'y',
+  data:{labels:counties, datasets:[{label:'Cases', data:[8438,6179,2501,1946,517,345,212], backgroundColor:[RED,RED,AMBER,AMBER,GREEN,GREEN,GREEN], borderRadius:4}]},
+  options:{plugins:{legend:{display:false}}, scales:{x:{grid:{color:BORDER}},y:{grid:{display:false}}}}
+});
+
+new Chart(document.getElementById('countyHospChart'),{
+  type:'bar', indexAxis:'y',
+  data:{labels:counties, datasets:[{label:'Hosp Rate %', data:[19.2,19.1,19.0,19.7,21.9,21.2,23.6], backgroundColor:[AMBER,AMBER,AMBER,AMBER,RED,RED,RED], borderRadius:4}]},
+  options:{plugins:{legend:{display:false}}, scales:{x:{max:28, ticks:{callback:v=>v+'%'}, grid:{color:BORDER}},y:{grid:{display:false}}}}
+});
+
+// Demographics charts
+const ageGroups=['0-17','18-34','35-49','50-64','65+'];
+new Chart(document.getElementById('ageCasesChart'),{
+  type:'bar',
+  data:{labels:ageGroups, datasets:[{label:'Cases', data:[3672,4867,4366,3997,3236], backgroundColor:[BLUE,BLUE,AMBER,AMBER,RED], borderRadius:4}]},
+  options:{plugins:{legend:{display:false}}, scales:{x:{grid:{color:BORDER}},y:{grid:{color:BORDER}}}}
+});
+
+new Chart(document.getElementById('ageHospChart'),{
+  type:'bar',
+  data:{labels:ageGroups, datasets:[{label:'Hosp Rate %', data:[3.5,16.4,16.7,24.8,38.5], backgroundColor:[GREEN,AMBER,AMBER,RED,RED], borderRadius:4}]},
+  options:{plugins:{legend:{display:false}}, scales:{x:{grid:{color:BORDER}},y:{ticks:{callback:v=>v+'%'}, grid:{color:BORDER}}}}
+});
+
+new Chart(document.getElementById('ageCFRChart'),{
+  type:'bar',
+  data:{labels:ageGroups, datasets:[{label:'CFR %', data:[0.11,1.07,1.26,2.60,5.35], backgroundColor:[GREEN,AMBER,AMBER,RED,RED], borderRadius:4}]},
+  options:{plugins:{legend:{display:false}}, scales:{x:{grid:{color:BORDER}},y:{ticks:{callback:v=>v+'%'}, grid:{color:BORDER}}}}
+});
+
+new Chart(document.getElementById('sexChart'),{
+  type:'doughnut',
+  data:{labels:['Male','Female'], datasets:[{data:[10189,9949], backgroundColor:[BLUE,PURPLE], borderColor:'#0a0c0f', borderWidth:3, hoverOffset:5}]},
+  options:{cutout:'62%', plugins:{legend:{position:'bottom', labels:{boxWidth:10,padding:12}}}}
+});
+
+new Chart(document.getElementById('losChart'),{
+  type:'bar',
+  data:{labels:ageGroups, datasets:[{label:'Avg LOS (days)', data:[0.3,1.3,1.3,1.9,3.0], backgroundColor:PURPLE, borderRadius:4}]},
+  options:{plugins:{legend:{display:false}}, scales:{x:{grid:{color:BORDER}},y:{grid:{color:BORDER}}}}
+});
+
+// Variants
+const variantLabels=Array.from({length:52},(_,i)=>i+1);
+const originalData=[...Array(12).fill(0).map((_,i)=>Math.round(epicurve[i]*0.9)),...Array(40).fill(0)];
+const deltaData=[...Array(6).fill(0),...epicurve.slice(6,28).map(v=>Math.round(v*0.85)),...Array(18).fill(0)];
+const omicronYData=[...Array(22).fill(0),...epicurve.slice(22,42).map(v=>Math.round(v*0.80)),...Array(10).fill(0)];
+const omicronZData=[...Array(36).fill(0),...epicurve.slice(36).map(v=>Math.round(v*0.75))];
+
+new Chart(document.getElementById('variantAreaChart'),{
+  type:'line',
+  data:{
+    labels:variantLabels,
+    datasets:[
+      {label:'Original',  data:originalData,  fill:true, backgroundColor:'rgba(59,130,246,0.6)',  borderColor:BLUE,   borderWidth:0, tension:0.4, pointRadius:0},
+      {label:'Delta-X',   data:deltaData,     fill:true, backgroundColor:'rgba(245,158,11,0.6)',  borderColor:AMBER,  borderWidth:0, tension:0.4, pointRadius:0},
+      {label:'Omicron-Y', data:omicronYData,  fill:true, backgroundColor:'rgba(239,68,68,0.6)',   borderColor:RED,    borderWidth:0, tension:0.4, pointRadius:0},
+      {label:'Omicron-Z', data:omicronZData,  fill:true, backgroundColor:'rgba(168,85,247,0.6)',  borderColor:PURPLE, borderWidth:0, tension:0.4, pointRadius:0},
+    ]
+  },
+  options:{
+    plugins:{legend:{position:'top'}},
+    scales:{
+      x:{stacked:true, grid:{color:BORDER}, ticks:{callback:(_,i)=>i%4===0?`W${i+1}`:''}},
+      y:{stacked:true, grid:{color:BORDER}}
+    }
+  }
+});
+
+new Chart(document.getElementById('variantCasesChart'),{
+  type:'bar',
+  data:{labels:['Original','Delta-X','Omicron-Y','Omicron-Z'], datasets:[{label:'Total Cases', data:[5061,5281,7053,2743], backgroundColor:[BLUE,AMBER,RED,PURPLE], borderRadius:5}]},
+  options:{plugins:{legend:{display:false}}, scales:{x:{grid:{color:BORDER}},y:{grid:{color:BORDER}}}}
+});
+
+new Chart(document.getElementById('variantSeverityChart'),{
+  type:'bar',
+  data:{
+    labels:['Original','Delta-X','Omicron-Y','Omicron-Z'],
+    datasets:[
+      {label:'Hosp Rate %', data:[20.7,20.8,18.0,17.2], backgroundColor:AMBER, borderRadius:4},
+      {label:'CFR %',       data:[2.69,2.56,1.22,1.13], backgroundColor:RED,   borderRadius:4},
+    ]
+  },
+  options:{plugins:{legend:{position:'top'}}, scales:{x:{grid:{color:BORDER}},y:{ticks:{callback:v=>v+'%'}, grid:{color:BORDER}}}}
+});
+
+// Vaccines
+const vaccMonthly=[15.2,18.4,22.1,27.3,31.8,36.5,41.2,46.8,51.3,55.9,60.4,65.8];
+new Chart(document.getElementById('vaccCoverageChart'),{
+  type:'line',
+  data:{labels:months, datasets:[{label:'% Cases Vaccinated', data:vaccMonthly, borderColor:BLUE, backgroundColor:'rgba(59,130,246,0.1)', fill:true, tension:0.4, pointRadius:4, pointBackgroundColor:BLUE}]},
+  options:{plugins:{legend:{display:false}}, scales:{x:{grid:{color:BORDER}},y:{ticks:{callback:v=>v+'%'}, grid:{color:BORDER}}}}
+});
+
+new Chart(document.getElementById('vaccEffectChart'),{
+  type:'bar',
+  data:{
+    labels:['Hosp Rate','ICU Rate','CFR'],
+    datasets:[
+      {label:'Vaccinated',   data:[18.7,5.8,1.64], backgroundColor:'rgba(34,197,94,0.75)', borderRadius:4},
+      {label:'Unvaccinated', data:[20.0,7.1,2.21], backgroundColor:'rgba(239,68,68,0.75)', borderRadius:4},
+    ]
+  },
+  options:{plugins:{legend:{position:'top'}}, scales:{x:{grid:{color:BORDER}},y:{ticks:{callback:v=>v+'%'}, grid:{color:BORDER}}}}
+});
+</script>
+</body>
+</html>
