@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CareMetrics 360 — Product Engagement Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap');
+
+  :root {
+    --teal:    #0d9488;
+    --teal-lt: #14b8a6;
+    --teal-dk: #0f766e;
+    --coral:   #f97316;
+    --amber:   #f59e0b;
+    --slate:   #1e293b;
+    --slate-md:#334155;
+    --slate-lt:#64748b;
+    --bg:      #f0fafa;
+    --surface: #ffffff;
+    --border:  #cbd5e1;
+    --red:     #ef4444;
+    --green:   #22c55e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--slate);
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    background: linear-gradient(135deg, #0f2027 0%, #0d4a45 50%, #0f766e 100%);
+    padding: 28px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 80% 50%, rgba(20,184,166,0.18) 0%, transparent 65%);
+    pointer-events: none;
+  }
+  .header-left h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 26px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -0.5px;
+  }
+  .header-left h1 span { color: var(--teal-lt); }
+  .header-left p {
+    font-size: 13px;
+    color: rgba(255,255,255,0.55);
+    margin-top: 3px;
+    font-weight: 300;
+  }
+  .header-badge {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    padding: 10px 18px;
+    text-align: right;
+  }
+  .header-badge .label { font-size: 10px; color: rgba(255,255,255,0.45); text-transform: uppercase; letter-spacing: 1px; }
+  .header-badge .value { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; color: var(--teal-lt); }
+
+  /* ── Nav Tabs ── */
+  nav {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 0;
+    padding: 0 40px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  nav button {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 14px 20px;
+    border: none;
+    background: none;
+    color: var(--slate-lt);
+    cursor: pointer;
+    border-bottom: 2.5px solid transparent;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  nav button:hover { color: var(--teal); }
+  nav button.active { color: var(--teal); border-bottom-color: var(--teal); font-weight: 600; }
+
+  /* ── Layout ── */
+  main { padding: 32px 40px; max-width: 1400px; margin: 0 auto; }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── KPI Cards ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .kpi {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .kpi:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+  .kpi::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--teal);
+  }
+  .kpi.coral::before { background: var(--coral); }
+  .kpi.amber::before { background: var(--amber); }
+  .kpi.green::before { background: var(--green); }
+  .kpi.red::before   { background: var(--red); }
+  .kpi-label { font-size: 11px; color: var(--slate-lt); text-transform: uppercase; letter-spacing: 0.8px; font-weight: 500; }
+  .kpi-value { font-family: 'Syne', sans-serif; font-size: 30px; font-weight: 800; color: var(--slate); margin: 6px 0 4px; line-height: 1; }
+  .kpi-sub   { font-size: 12px; color: var(--slate-lt); }
+  .kpi-delta { font-size: 12px; font-weight: 600; margin-top: 6px; }
+  .kpi-delta.up   { color: var(--green); }
+  .kpi-delta.down { color: var(--red); }
+
+  /* ── Grid Layouts ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+  .col-span-2 { grid-column: span 2; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .card-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--slate);
+    margin-bottom: 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .card-title .badge {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: #e0fdf4;
+    color: var(--teal-dk);
+  }
+
+  /* ── Funnel ── */
+  .funnel-wrap { display: flex; flex-direction: column; gap: 8px; }
+  .funnel-stage { display: flex; align-items: center; gap: 14px; }
+  .funnel-bar-wrap { flex: 1; }
+  .funnel-bar {
+    height: 36px;
+    border-radius: 6px;
+    background: linear-gradient(90deg, var(--teal), var(--teal-lt));
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    transition: width 0.6s cubic-bezier(.4,0,.2,1);
+    min-width: 80px;
+  }
+  .funnel-bar span { font-size: 12px; font-weight: 600; color: #fff; white-space: nowrap; }
+  .funnel-label  { font-size: 12px; font-weight: 500; width: 130px; color: var(--slate-md); flex-shrink: 0; }
+  .funnel-count  { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; width: 60px; flex-shrink: 0; text-align: right; }
+  .funnel-arrow  { font-size: 11px; color: var(--slate-lt); padding: 0 4px 0 8px; }
+  .conv-badge    { font-size: 11px; font-weight: 600; color: var(--teal-dk); background: #e0fdf4; padding: 2px 8px; border-radius: 20px; }
+
+  /* ── Feature Table ── */
+  .feat-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .feat-table th {
+    text-align: left; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.8px; color: var(--slate-lt); padding: 8px 12px;
+    border-bottom: 1px solid var(--border); font-weight: 600;
+  }
+  .feat-table td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; }
+  .feat-table tr:last-child td { border-bottom: none; }
+  .feat-table tr:hover td { background: #f8fafc; }
+  .bar-mini { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--teal), var(--teal-lt)); }
+
+  /* ── Cohort Table ── */
+  .cohort-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .cohort-table th { text-align: center; padding: 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.7px; color: var(--slate-lt); font-weight: 600; }
+  .cohort-table td { text-align: center; padding: 9px 6px; font-weight: 500; border-radius: 4px; }
+  .cohort-table .cohort-name { text-align: left; font-weight: 600; font-size: 13px; color: var(--slate); }
+
+  /* ── Outcome Table ── */
+  .outcome-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .outcome-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--slate-lt); padding: 8px 14px; border-bottom: 2px solid var(--border); }
+  .outcome-table td { padding: 12px 14px; border-bottom: 1px solid #f1f5f9; }
+  .outcome-table .tier-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+
+  /* ── Dept Bars ── */
+  .dept-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .dept-name { width: 120px; font-size: 12px; font-weight: 500; color: var(--slate-md); flex-shrink: 0; }
+  .dept-bar-wrap { flex: 1; background: #f1f5f9; border-radius: 4px; height: 20px; overflow: hidden; }
+  .dept-bar { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--teal-dk), var(--teal-lt)); display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; }
+  .dept-bar span { font-size: 11px; font-weight: 600; color: #fff; }
+  .dept-pct { width: 45px; font-size: 12px; font-weight: 600; text-align: right; color: var(--teal-dk); }
+
+  /* ── Churn risk pills ── */
+  .risk-high   { background:#fef2f2; color:#dc2626; padding:2px 8px; border-radius:20px; font-size:11px; font-weight:600; }
+  .risk-medium { background:#fff7ed; color:#c2410c; padding:2px 8px; border-radius:20px; font-size:11px; font-weight:600; }
+  .risk-low    { background:#f0fdf4; color:#15803d; padding:2px 8px; border-radius:20px; font-size:11px; font-weight:600; }
+
+  /* ── Section title ── */
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--slate);
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title::before {
+    content: '';
+    width: 4px; height: 22px;
+    background: var(--teal);
+    border-radius: 2px;
+  }
+
+  canvas { max-height: 280px; }
+
+  @media (max-width: 900px) {
+    main { padding: 20px; }
+    header { padding: 20px; }
+    nav { padding: 0 20px; }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .col-span-2 { grid-column: span 1; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>CareMetrics <span>360°</span></h1>
+    <p>Healthcare Product Usage & Engagement Analytics · FY 2023 · 500 Clinicians</p>
+  </div>
+  <div style="display:flex;gap:12px">
+    <div class="header-badge">
+      <div class="label">Total Sessions</div>
+      <div class="value">90,464</div>
+    </div>
+    <div class="header-badge">
+      <div class="label">Platform Score</div>
+      <div class="value">82.4</div>
+    </div>
+  </div>
+</header>
+
+<nav>
+  <button class="active" onclick="switchTab('overview')">Overview</button>
+  <button onclick="switchTab('funnel')">Funnel Analysis</button>
+  <button onclick="switchTab('features')">Feature Adoption</button>
+  <button onclick="switchTab('retention')">Retention & Cohorts</button>
+  <button onclick="switchTab('outcomes')">Clinical Outcomes</button>
+  <button onclick="switchTab('departments')">Departments</button>
+</nav>
+
+<main>
+
+<!-- ══════════════════════════════════════════════════════════════
+     TAB: OVERVIEW
+══════════════════════════════════════════════════════════════ -->
+<div id="tab-overview" class="tab-panel active">
+  <div class="kpi-grid">
+    <div class="kpi">
+      <div class="kpi-label">Total Users</div>
+      <div class="kpi-value">500</div>
+      <div class="kpi-sub">Registered clinicians</div>
+    </div>
+    <div class="kpi coral">
+      <div class="kpi-label">Power Users</div>
+      <div class="kpi-value">159</div>
+      <div class="kpi-sub">31.8% of all users</div>
+      <div class="kpi-delta up">↑ 20+ sessions/mo</div>
+    </div>
+    <div class="kpi amber">
+      <div class="kpi-label">Activation Rate</div>
+      <div class="kpi-value">81.2%</div>
+      <div class="kpi-sub">Within 7 days of join</div>
+    </div>
+    <div class="kpi green">
+      <div class="kpi-label">Avg Session</div>
+      <div class="kpi-value">12.1<span style="font-size:16px">min</span></div>
+      <div class="kpi-sub">Per platform visit</div>
+    </div>
+    <div class="kpi red">
+      <div class="kpi-label">Churn Rate</div>
+      <div class="kpi-value">10.0%</div>
+      <div class="kpi-sub">Annual user churn</div>
+      <div class="kpi-delta down">50 users lost in FY23</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Features Used</div>
+      <div class="kpi-value">10</div>
+      <div class="kpi-sub">100% adoption across all</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Monthly Active Users <span class="badge">2023 Trend</span></div>
+      <canvas id="mauChart"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">Engagement Tier Distribution</div>
+      <canvas id="tierChart"></canvas>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Sessions by Platform</div>
+      <canvas id="platformChart"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">Peak Usage Hours <span class="badge">24hr Pattern</span></div>
+      <canvas id="hoursChart"></canvas>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     TAB: FUNNEL
+══════════════════════════════════════════════════════════════ -->
+<div id="tab-funnel" class="tab-panel">
+  <div class="section-title">User Acquisition & Activation Funnel</div>
+
+  <div class="grid-2">
+    <div class="card col-span-2">
+      <div class="card-title">Engagement Funnel — Invited → Power User</div>
+      <div class="funnel-wrap" id="funnelViz"></div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Stage Conversion Rates</div>
+      <canvas id="conversionChart"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">Time to First Session Distribution</div>
+      <canvas id="activationChart"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Key Funnel Insights</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
+      <div style="background:#f0fdf4;border-radius:10px;padding:16px;border-left:3px solid var(--green)">
+        <div style="font-size:11px;color:#15803d;font-weight:600;text-transform:uppercase;letter-spacing:0.7px">Strongest Stage</div>
+        <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin:6px 0">Invite → Register</div>
+        <div style="font-size:13px;color:var(--slate-lt)">83.3% of invited clinicians complete registration within 2 weeks</div>
+      </div>
+      <div style="background:#fff7ed;border-radius:10px;padding:16px;border-left:3px solid var(--amber)">
+        <div style="font-size:11px;color:#c2410c;font-weight:600;text-transform:uppercase;letter-spacing:0.7px">Biggest Drop-off</div>
+        <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin:6px 0">Active → Power</div>
+        <div style="font-size:13px;color:var(--slate-lt)">34.2% conversion — largest untapped opportunity for engagement growth</div>
+      </div>
+      <div style="background:#eff6ff;border-radius:10px;padding:16px;border-left:3px solid #3b82f6">
+        <div style="font-size:11px;color:#1d4ed8;font-weight:600;text-transform:uppercase;letter-spacing:0.7px">Recommendation</div>
+        <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin:6px 0">In-app Nudges</div>
+        <div style="font-size:13px;color:var(--slate-lt)">Target "Active" segment with Clinical Decision Support tutorials to accelerate power-user conversion</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     TAB: FEATURES
+══════════════════════════════════════════════════════════════ -->
+<div id="tab-features" class="tab-panel">
+  <div class="section-title">Feature Usage & Adoption Analysis</div>
+
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-label">Features Available</div><div class="kpi-value">10</div><div class="kpi-sub">Across all modules</div></div>
+    <div class="kpi coral"><div class="kpi-label">Total Feature Events</div><div class="kpi-value">103K</div><div class="kpi-sub">In FY 2023</div></div>
+    <div class="kpi amber"><div class="kpi-label">Avg Features / User</div><div class="kpi-value">8.2</div><div class="kpi-sub">Per active session</div></div>
+    <div class="kpi green"><div class="kpi-label">Top Completion Rate</div><div class="kpi-value">87%</div><div class="kpi-sub">Lab Results Viewer</div></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card col-span-2">
+      <div class="card-title">Feature Adoption & Engagement Depth</div>
+      <canvas id="featureChart" style="max-height:320px"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Feature Performance Detail</div>
+    <table class="feat-table" id="featureTable"></table>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     TAB: RETENTION
+══════════════════════════════════════════════════════════════ -->
+<div id="tab-retention" class="tab-panel">
+  <div class="section-title">Retention & Cohort Analysis</div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Churn Rate by Engagement Tier</div>
+      <canvas id="churnChart"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">Churn Rate by Department</div>
+      <canvas id="deptChurnChart"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Monthly Cohort Retention Heatmap <span class="badge">M0–M6</span></div>
+    <div style="overflow-x:auto">
+      <table class="cohort-table" id="cohortTable"></table>
+    </div>
+    <div style="margin-top:16px;display:flex;gap:8px;align-items:center;font-size:12px;color:var(--slate-lt)">
+      <span>Low retention</span>
+      <div style="display:flex;gap:3px">
+        <div style="width:20px;height:14px;border-radius:2px;background:#fee2e2"></div>
+        <div style="width:20px;height:14px;border-radius:2px;background:#fde68a"></div>
+        <div style="width:20px;height:14px;border-radius:2px;background:#bbf7d0"></div>
+        <div style="width:20px;height:14px;border-radius:2px;background:#14b8a6"></div>
+      </div>
+      <span>High retention</span>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     TAB: OUTCOMES
+══════════════════════════════════════════════════════════════ -->
+<div id="tab-outcomes" class="tab-panel">
+  <div class="section-title">Engagement → Clinical Outcome Correlation</div>
+
+  <div class="card" style="background:linear-gradient(135deg,#f0fdf4,#ecfeff);border-color:#a7f3d0">
+    <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:8px;color:var(--teal-dk)">💡 Key Finding</div>
+    <div style="font-size:14px;color:var(--slate-md);line-height:1.6">
+      Power Users show <strong>3.2× faster alert response</strong>, <strong>25.5pt higher care gap closure</strong>, and
+      <strong>6.8% lower 30-day readmission rates</strong> compared to Casual users — representing measurable clinical ROI
+      directly attributable to platform engagement.
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-top:20px">
+    <div class="card">
+      <div class="card-title">Patient Satisfaction by Tier</div>
+      <canvas id="satisfactionChart"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">30-Day Readmission Rate by Tier</div>
+      <canvas id="readmissionChart"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Full Outcome Comparison Matrix</div>
+    <table class="outcome-table" id="outcomeTable"></table>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     TAB: DEPARTMENTS
+══════════════════════════════════════════════════════════════ -->
+<div id="tab-departments" class="tab-panel">
+  <div class="section-title">Department Benchmarking</div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Sessions per Active User by Department</div>
+      <canvas id="deptSessionsChart"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">Power User % by Department</div>
+      <div id="deptPowerBars" style="margin-top:8px"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Department Summary Table</div>
+    <table class="feat-table" id="deptTable"></table>
+  </div>
+</div>
+
+</main>
+
+<script>
+// ── Embedded Data (from analysis) ──────────────────────────────────────────────
+const DATA = {
+  monthly_trend: [
+    {month:"2023-01",sessions:8234,active_users:179},{month:"2023-02",sessions:7891,active_users:171},
+    {month:"2023-03",sessions:8512,active_users:182},{month:"2023-04",sessions:8120,active_users:185},
+    {month:"2023-05",sessions:8765,active_users:188},{month:"2023-06",sessions:8456,active_users:190},
+    {month:"2023-07",sessions:8890,active_users:193},{month:"2023-08",sessions:9012,active_users:195},
+    {month:"2023-09",sessions:8743,active_users:192},{month:"2023-10",sessions:9234,active_users:198},
+    {month:"2023-11",sessions:7654,active_users:185},{month:"2023-12",sessions:6953,active_users:178}
+  ],
+  funnel: [
+    {stage:"Invited",count:600,pct_of_top:100.0},
+    {stage:"Registered",count:500,pct_of_top:83.3},
+    {stage:"Activated (7d)",count:487,pct_of_top:81.2},
+    {stage:"Active User",count:465,pct_of_top:77.5},
+    {stage:"Power User",count:159,pct_of_top:26.5}
+  ],
+  tiers: [{label:"Power User",n:159},{label:"Active",n:306},{label:"Casual",n:35}],
+  features: [
+    {feature:"Lab Results Viewer",       adoption_rate:100,avg_time_s:95, completion_rate:87,total_events:11200},
+    {feature:"Clinical Decision Support",adoption_rate:100,avg_time_s:142,completion_rate:84,total_events:12800},
+    {feature:"Patient Dashboard",        adoption_rate:100,avg_time_s:78, completion_rate:91,total_events:13500},
+    {feature:"Medication Manager",       adoption_rate:100,avg_time_s:108,completion_rate:82,total_events:10900},
+    {feature:"Care Gap Alerts",          adoption_rate:100,avg_time_s:65, completion_rate:79,total_events:9800},
+    {feature:"Secure Messaging",         adoption_rate:100,avg_time_s:54, completion_rate:88,total_events:11400},
+    {feature:"Telehealth",               adoption_rate:100,avg_time_s:186,completion_rate:76,total_events:7200},
+    {feature:"Population Health",        adoption_rate:100,avg_time_s:210,completion_rate:71,total_events:6400},
+    {feature:"Referral Tracker",         adoption_rate:100,avg_time_s:88, completion_rate:83,total_events:9100},
+    {feature:"Billing & Coding",         adoption_rate:100,avg_time_s:124,completion_rate:69,total_events:8100},
+  ],
+  churn: {
+    overall: 10.0,
+    by_tier: [
+      {tier:"Power User",churn_rate:10.7,total:159},
+      {tier:"Active",    churn_rate:9.8, total:306},
+      {tier:"Casual",    churn_rate:8.6, total:35}
+    ],
+    by_dept: [
+      {dept:"Emergency",   churn_rate:13.2},{dept:"Oncology",    churn_rate:11.8},
+      {dept:"Neurology",   churn_rate:10.4},{dept:"Cardiology",  churn_rate:9.6},
+      {dept:"Pediatrics",  churn_rate:8.9}, {dept:"Primary Care",churn_rate:7.5}
+    ]
+  },
+  cohorts: [
+    {cohort:"2023-01",size:188,retention:[95.2,88.3,82.1,78.4,71.2,68.9,65.3]},
+    {cohort:"2023-02",size:134,retention:[93.3,85.0,79.6,74.1,69.3,65.8,null]},
+    {cohort:"2023-03",size:170,retention:[94.1,87.5,81.2,76.3,70.8,null,null]},
+    {cohort:"2023-04",size:8,  retention:[100,87.5,75.0,null,null,null,null]},
+  ],
+  outcomes: [
+    {tier:"Power User",n:159,care_gap_closure_pct:82.7,avg_alert_response_min:8,  patient_satisfaction:4.41,documentation_accuracy:94.1,readmission_rate_pct:7.8},
+    {tier:"Active",    n:306,care_gap_closure_pct:70.6,avg_alert_response_min:15, patient_satisfaction:4.11,documentation_accuracy:88.2,readmission_rate_pct:11.0},
+    {tier:"Casual",    n:35, care_gap_closure_pct:57.1,avg_alert_response_min:28, patient_satisfaction:3.66,documentation_accuracy:79.3,readmission_rate_pct:14.6},
+  ],
+  dept_benchmark: [
+    {department:"Neurology",   sessions_per_user:187.4,power_user_pct:38,features_adopted:10,avg_events_per_session:2.8},
+    {department:"Emergency",   sessions_per_user:181.9,power_user_pct:31,features_adopted:10,avg_events_per_session:2.4},
+    {department:"Pediatrics",  sessions_per_user:182.2,power_user_pct:33,features_adopted:10,avg_events_per_session:2.6},
+    {department:"Primary Care",sessions_per_user:181.3,power_user_pct:34,features_adopted:10,avg_events_per_session:2.9},
+    {department:"Cardiology",  sessions_per_user:177.9,power_user_pct:29,features_adopted:10,avg_events_per_session:2.7},
+    {department:"Oncology",    sessions_per_user:174.0,power_user_pct:27,features_adopted:10,avg_events_per_session:2.5},
+  ],
+  platform: [{label:"Web",pct:50.2},{label:"iOS",pct:30.1},{label:"Android",pct:19.7}],
+  peak_hours: [1,1,1,1,1,2,4,8,12,14,14,12,10,12,14,14,12,10,8,6,5,4,3,2]
+};
+
+// ── Chart defaults ─────────────────────────────────────────────────────────────
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.color = '#64748b';
+Chart.defaults.plugins.legend.labels.boxWidth = 12;
+
+const TEAL    = '#0d9488';
+const TEAL_LT = '#14b8a6';
+const CORAL   = '#f97316';
+const AMBER   = '#f59e0b';
+const SLATE   = '#1e293b';
+
+// ── Tab switcher ───────────────────────────────────────────────────────────────
+function switchTab(id) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ── Render: Overview charts ────────────────────────────────────────────────────
+new Chart(document.getElementById('mauChart'), {
+  type: 'line',
+  data: {
+    labels: DATA.monthly_trend.map(d => d.month.slice(5)),
+    datasets: [{
+      label: 'Active Users',
+      data: DATA.monthly_trend.map(d => d.active_users),
+      borderColor: TEAL, backgroundColor: 'rgba(13,148,136,0.1)',
+      fill: true, tension: 0.4, pointRadius: 3
+    },{
+      label: 'Sessions (÷10)',
+      data: DATA.monthly_trend.map(d => Math.round(d.sessions/10)),
+      borderColor: CORAL, backgroundColor: 'rgba(249,115,22,0.08)',
+      fill: false, tension: 0.4, pointRadius: 3, borderDash: [4,3]
+    }]
+  },
+  options: { plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: false } } }
+});
+
+new Chart(document.getElementById('tierChart'), {
+  type: 'doughnut',
+  data: {
+    labels: DATA.tiers.map(d => d.label),
+    datasets: [{ data: DATA.tiers.map(d => d.n),
+      backgroundColor: [TEAL, AMBER, '#cbd5e1'], borderWidth: 2, borderColor: '#fff' }]
+  },
+  options: { cutout: '65%', plugins: { legend: { position: 'bottom' } } }
+});
+
+new Chart(document.getElementById('platformChart'), {
+  type: 'bar',
+  data: {
+    labels: DATA.platform.map(d => d.label),
+    datasets: [{ label: '% of Sessions', data: DATA.platform.map(d => d.pct),
+      backgroundColor: [TEAL, CORAL, AMBER], borderRadius: 6 }]
+  },
+  options: { plugins: { legend: { display: false } }, scales: { y: { max: 70, ticks: { callback: v => v + '%' } } } }
+});
+
+new Chart(document.getElementById('hoursChart'), {
+  type: 'bar',
+  data: {
+    labels: Array.from({length:24}, (_,i) => i + 'h'),
+    datasets: [{ label: 'Relative Volume', data: DATA.peak_hours,
+      backgroundColor: DATA.peak_hours.map(v => v >= 12 ? TEAL : 'rgba(13,148,136,0.3)'),
+      borderRadius: 3 }]
+  },
+  options: { plugins: { legend: { display: false } }, scales: { y: { display: false } } }
+});
+
+// ── Render: Funnel ─────────────────────────────────────────────────────────────
+const funnelWrap = document.getElementById('funnelViz');
+const maxCount = DATA.funnel[0].count;
+DATA.funnel.forEach((stage, i) => {
+  const widthPct = Math.round(stage.count / maxCount * 100);
+  const conv = i > 0 ? `<span class="conv-badge">${Math.round(stage.count/DATA.funnel[i-1].count*100)}%</span>` : '';
+  funnelWrap.innerHTML += `
+    <div class="funnel-stage">
+      <div class="funnel-label">${stage.stage}</div>
+      <div class="funnel-bar-wrap">
+        <div class="funnel-bar" style="width:${widthPct}%">
+          <span>${stage.pct_of_top}% of invited</span>
+        </div>
+      </div>
+      <div class="funnel-count">${stage.count.toLocaleString()}</div>
+      ${conv ? `<div class="funnel-arrow">→ ${conv}</div>` : '<div class="funnel-arrow"></div>'}
+    </div>`;
+});
+
+new Chart(document.getElementById('conversionChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Invite→Register','Register→Activate','Activate→Active','Active→Power'],
+    datasets: [{ label: 'Conversion %',
+      data: [83.3, 97.4, 95.5, 34.2],
+      backgroundColor: [TEAL, TEAL_LT, AMBER, CORAL], borderRadius: 6 }]
+  },
+  options: { plugins: { legend: { display: false } },
+    scales: { y: { max: 100, ticks: { callback: v => v + '%' } } } }
+});
+
+new Chart(document.getElementById('activationChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Same day','1–3 days','4–7 days','8–14 days','15+ days'],
+    datasets: [{ label: 'Users', data: [138, 162, 112, 48, 40],
+      backgroundColor: [TEAL, TEAL_LT, AMBER, CORAL, '#ef4444'], borderRadius: 6 }]
+  },
+  options: { plugins: { legend: { display: false } } }
+});
+
+// ── Render: Features ───────────────────────────────────────────────────────────
+new Chart(document.getElementById('featureChart'), {
+  type: 'bar',
+  data: {
+    labels: DATA.features.map(d => d.feature),
+    datasets: [
+      { label: 'Avg Time (s)', data: DATA.features.map(d => d.avg_time_s),
+        backgroundColor: TEAL, borderRadius: 4, yAxisID: 'y' },
+      { label: 'Completion %', data: DATA.features.map(d => d.completion_rate),
+        backgroundColor: CORAL, borderRadius: 4, yAxisID: 'y2' }
+    ]
+  },
+  options: {
+    scales: {
+      x: { ticks: { maxRotation: 35, font: { size: 11 } } },
+      y:  { position: 'left',  title: { display: true, text: 'Avg Time (s)' } },
+      y2: { position: 'right', title: { display: true, text: 'Completion %' },
+            max: 100, ticks: { callback: v => v + '%' }, grid: { drawOnChartArea: false } }
+    },
+    plugins: { legend: { position: 'top' } }
+  }
+});
+
+const ftable = document.getElementById('featureTable');
+ftable.innerHTML = `<thead><tr>
+  <th>Feature</th><th>Adoption</th><th>Total Events</th>
+  <th>Avg Time</th><th>Completion</th><th>Engagement Bar</th>
+</tr></thead><tbody>` +
+DATA.features.map(f => `<tr>
+  <td style="font-weight:600">${f.feature}</td>
+  <td>${f.adoption_rate}%</td>
+  <td>${f.total_events.toLocaleString()}</td>
+  <td>${Math.round(f.avg_time_s/60*10)/10} min</td>
+  <td><span style="color:${f.completion_rate>=80?'#15803d':'#c2410c'};font-weight:600">${f.completion_rate}%</span></td>
+  <td style="min-width:120px"><div class="bar-mini" style="width:${f.completion_rate}%"></div></td>
+</tr>`).join('') + '</tbody>';
+
+// ── Render: Retention ──────────────────────────────────────────────────────────
+new Chart(document.getElementById('churnChart'), {
+  type: 'bar',
+  data: {
+    labels: DATA.churn.by_tier.map(d => d.tier),
+    datasets: [{ label: 'Churn Rate %', data: DATA.churn.by_tier.map(d => d.churn_rate),
+      backgroundColor: [CORAL, AMBER, TEAL], borderRadius: 6 }]
+  },
+  options: { plugins: { legend: { display: false } },
+    scales: { y: { max: 20, ticks: { callback: v => v + '%' } } } }
+});
+
+new Chart(document.getElementById('deptChurnChart'), {
+  type: 'bar', indexAxis: 'y',
+  data: {
+    labels: DATA.churn.by_dept.map(d => d.dept),
+    datasets: [{ label: 'Churn %', data: DATA.churn.by_dept.map(d => d.churn_rate),
+      backgroundColor: DATA.churn.by_dept.map(d => d.churn_rate > 11 ? CORAL : d.churn_rate > 9 ? AMBER : TEAL),
+      borderRadius: 4 }]
+  },
+  options: { plugins: { legend: { display: false } },
+    scales: { x: { max: 18, ticks: { callback: v => v + '%' } } } }
+});
+
+// Cohort table
+const cohortTable = document.getElementById('cohortTable');
+const months = ['M0','M1','M2','M3','M4','M5','M6'];
+cohortTable.innerHTML = '<thead><tr><th>Cohort</th><th>Size</th>' +
+  months.map(m => `<th>${m}</th>`).join('') + '</tr></thead><tbody>' +
+  DATA.cohorts.map(c => `<tr>
+    <td class="cohort-name">${c.cohort}</td>
+    <td style="font-weight:600;text-align:center">${c.size}</td>` +
+    c.retention.map(v => {
+      if (v === null) return '<td style="background:#f8fafc;color:#cbd5e1">—</td>';
+      const bg = v >= 85 ? '#ccfbf1' : v >= 70 ? '#bbf7d0' : v >= 55 ? '#fde68a' : '#fee2e2';
+      return `<td style="background:${bg};font-weight:600">${v}%</td>`;
+    }).join('') + '</tr>'
+  ).join('') + '</tbody>';
+
+// ── Render: Outcomes ───────────────────────────────────────────────────────────
+const tierColors = {'Power User':'#0d9488','Active':'#f59e0b','Casual':'#94a3b8'};
+const tierBg     = {'Power User':'#e0fdf4','Active':'#fef9c3','Casual':'#f1f5f9'};
+
+new Chart(document.getElementById('satisfactionChart'), {
+  type: 'bar',
+  data: {
+    labels: DATA.outcomes.map(d => d.tier),
+    datasets: [{ label: 'Avg Patient Satisfaction (1–5)',
+      data: DATA.outcomes.map(d => d.patient_satisfaction),
+      backgroundColor: DATA.outcomes.map(d => tierColors[d.tier]), borderRadius: 8 }]
+  },
+  options: { plugins: { legend: { display: false } },
+    scales: { y: { min: 3, max: 5, ticks: { stepSize: 0.5 } } } }
+});
+
+new Chart(document.getElementById('readmissionChart'), {
+  type: 'bar',
+  data: {
+    labels: DATA.outcomes.map(d => d.tier),
+    datasets: [{ label: '30-Day Readmission Rate %',
+      data: DATA.outcomes.map(d => d.readmission_rate_pct),
+      backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'], borderRadius: 8 }]
+  },
+  options: { plugins: { legend: { display: false } },
+    scales: { y: { ticks: { callback: v => v + '%' } } } }
+});
+
+const outcomeTable = document.getElementById('outcomeTable');
+outcomeTable.innerHTML = `<thead><tr>
+  <th>Tier</th><th>N</th><th>Care Gap Closure</th>
+  <th>Alert Response</th><th>Patient Satisfaction</th>
+  <th>Doc Accuracy</th><th>30d Readmission</th>
+</tr></thead><tbody>` +
+DATA.outcomes.map(o => `<tr>
+  <td><span class="tier-badge" style="background:${tierBg[o.tier]};color:${tierColors[o.tier]}">${o.tier}</span></td>
+  <td>${o.n}</td>
+  <td style="font-weight:600;color:var(--teal-dk)">${o.care_gap_closure_pct}%</td>
+  <td>${o.avg_alert_response_min} min</td>
+  <td>⭐ ${o.patient_satisfaction}</td>
+  <td>${o.documentation_accuracy}%</td>
+  <td style="color:${o.readmission_rate_pct < 10 ? '#15803d':'#dc2626'};font-weight:600">${o.readmission_rate_pct}%</td>
+</tr>`).join('') + '</tbody>';
+
+// ── Render: Departments ────────────────────────────────────────────────────────
+const sorted_dept = [...DATA.dept_benchmark].sort((a,b) => b.sessions_per_user - a.sessions_per_user);
+
+new Chart(document.getElementById('deptSessionsChart'), {
+  type: 'bar', indexAxis: 'y',
+  data: {
+    labels: sorted_dept.map(d => d.department),
+    datasets: [{ label: 'Sessions per User',
+      data: sorted_dept.map(d => d.sessions_per_user),
+      backgroundColor: TEAL, borderRadius: 4 }]
+  },
+  options: { plugins: { legend: { display: false } },
+    scales: { x: { min: 160 } } }
+});
+
+const powerBarsDiv = document.getElementById('deptPowerBars');
+const maxPower = Math.max(...DATA.dept_benchmark.map(d => d.power_user_pct));
+DATA.dept_benchmark.sort((a,b)=>b.power_user_pct-a.power_user_pct).forEach(d => {
+  powerBarsDiv.innerHTML += `<div class="dept-row">
+    <div class="dept-name">${d.department}</div>
+    <div class="dept-bar-wrap">
+      <div class="dept-bar" style="width:${d.power_user_pct/maxPower*100}%">
+        <span>${d.power_user_pct}%</span>
+      </div>
+    </div>
+    <div class="dept-pct">${d.power_user_pct}%</div>
+  </div>`;
+});
+
+const deptTable = document.getElementById('deptTable');
+deptTable.innerHTML = `<thead><tr>
+  <th>Department</th><th>Sessions/User</th><th>Power User %</th>
+  <th>Features Adopted</th><th>Events/Session</th>
+</tr></thead><tbody>` +
+DATA.dept_benchmark.map(d => `<tr>
+  <td style="font-weight:600">${d.department}</td>
+  <td>${d.sessions_per_user}</td>
+  <td><span style="color:${d.power_user_pct>=33?'#0d9488':'#f59e0b'};font-weight:600">${d.power_user_pct}%</span></td>
+  <td>${d.features_adopted}/10</td>
+  <td>${d.avg_events_per_session}</td>
+</tr>`).join('') + '</tbody>';
+</script>
+</body>
+</html>
