@@ -1,0 +1,24 @@
+producer_class	xtools.gsea.GseaPreranked
+producer_timestamp	1642603728526
+param	rnd_seed	timestamp
+param	rpt_label	Bea_IL6KOd4vdwtd4_go_terms
+param	set_min	15
+param	chip	ftp.broadinstitute.org://pub/gsea/annotations_versioned/Mouse_ENSEMBL_Gene_ID_Human_Orthologs_MSigDB.v7.4.chip
+param	zip_report	false
+param	create_svgs	false
+param	scoring_scheme	weighted
+param	rnk	/Users/davehill/Desktop/Leonfastq_20212607/Bea_2021_07_04_IL6Rnaseq/count_files/count_files/qlf.KOd4vsWTd4_gsea_score.rnk
+param	norm	meandiv
+param	out	/Users/davehill/gsea_home/output/jan19
+param	mode	Abs_max_of_probes
+param	include_only_symbols	true
+param	help	false
+param	set_max	500
+param	gmx	ftp.broadinstitute.org://pub/gsea/gene_sets/c5.all.v7.5.symbols.gmt
+param	make_sets	true
+param	plot_top_x	100
+param	gui	false
+param	nperm	1000
+param	collapse	No_Collapse
+
+file	/Users/davehill/gsea_home/output/jan19/Bea_IL6KOd4vdwtd4_go_terms.GseaPreranked.1642603728526/index.html
